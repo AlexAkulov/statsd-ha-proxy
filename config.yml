@@ -1,0 +1,5 @@
+lisen: :8125
+log_level: info
+servers:
+  - host1:8125
+  - host2:8125
