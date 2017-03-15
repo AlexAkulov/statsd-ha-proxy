@@ -1,5 +1,10 @@
-lisen: :8125
-log_level: info
+log_file: stdout
+log_level: debug
+listen: :8125
 servers:
-  - host1:8125
-  - host2:8125
+  - localhost:5555
+  - localhost:5556
+timeout: 1000 # 1s
+reconnect_retries: 6
+reconnect_interval: 10000 # 10s
+cache_size: 1000000
