@@ -38,8 +38,9 @@ func (s *Server) Start() error {
 	}
 	log.Infof("Listen on port %s", s.ConfigListen)
 
-	buf := make([]byte, 64*1024)
-	s.tomb.Go(func() error {
+	buf := make([]byte, getSockBufferMaxSize())
+
+	go func() error {
 		for {
 			select {
 			case <-s.tomb.Dying():
@@ -54,7 +55,7 @@ func (s *Server) Start() error {
 				}
 			}
 		}
-	})
+	}()
 
 	return nil
 }
@@ -68,25 +69,24 @@ func (s *Server) Reload() error {
 // Stop server
 func (s *Server) Stop() error {
 	s.conn.Close()
-	s.tomb.Kill(nil)
-	return s.tomb.Wait()
+	return nil
 }
 
 // sockBufferMaxSize() returns the maximum size that the UDP receive buffer
 // in the kernel can be set to.  In bytes.
-func getSockBufferMaxSize() (int, error) {
-
+func getSockBufferMaxSize() int {
+	defaultBufferSize := 32 * 1024
 	// XXX: This is Linux-only most likely
 	data, err := ioutil.ReadFile("/proc/sys/net/core/rmem_max")
 	if err != nil {
-		return -1, err
+		return defaultBufferSize
 	}
 
 	data = bytes.TrimRight(data, "\n\r")
 	i, err := strconv.Atoi(string(data))
 	if err != nil {
-		return -1, err
+		return defaultBufferSize
 	}
 
-	return i, nil
+	return i
 }

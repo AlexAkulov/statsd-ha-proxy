@@ -15,9 +15,9 @@ type config struct {
 	Listen            string   `yaml:"listen"`
 	Backends          []string `yaml:"servers"`
 	Timeout           int64    `yaml:"timeout"`
-	ReconnectRetries  int    `yaml:"reconnect_retries"`
 	ReconnectInterval int64    `yaml:"reconnect_interval"`
 	CacheSize         int64    `yaml:"cache_size"`
+	SwitchLatency     int64    `yaml:"switch_upstream_latency"`
 }
 
 func printDefaultConfig() {
@@ -37,8 +37,8 @@ func getDefaultConfig() config {
 		},
 		Timeout:           1000,
 		ReconnectInterval: 10000,
-		ReconnectRetries:  6,
-		CacheSize: 1000000,
+		CacheSize:         1000000,
+		SwitchLatency:     10, //seconds
 	}
 }
 

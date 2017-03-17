@@ -62,8 +62,8 @@ func main() {
 		Channel:                  cache,
 		BackendsList:             config.Backends,
 		BackendReconnectInterval: config.ReconnectInterval,
-		BackendRetries:           config.ReconnectRetries,
 		BackendTimeout:           config.Timeout,
+		SwitchLatency:            config.SwitchLatency,
 	}
 
 	statsiteBackends.Start()
@@ -84,6 +84,10 @@ func main() {
 	log.Info(<-signalChannel)
 
 	if err := statsiteProxyServer.Stop(); err != nil {
+		log.Error(err)
+	}
+
+	if err := statsiteBackends.Stop(); err != nil {
 		log.Error(err)
 	}
 

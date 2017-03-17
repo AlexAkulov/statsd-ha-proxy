@@ -2,7 +2,6 @@ package upstreams
 
 import (
 	"bytes"
-	"fmt"
 	"net"
 	"time"
 
@@ -14,60 +13,107 @@ var (
 )
 
 type backend struct {
-	conn    net.Conn
-	server  string
-	inteval time.Duration
-	timeout time.Duration
-	retries int
+	conn     net.Conn
+	server   string
+	timeout  time.Duration
+	uptime   int64
+	downtime int64
 }
 
 type Upstream struct {
 	backends      []*backend
-	activeBackend int
+	activeBackend *backend
 	Log           *logging.Logger
 	Channel       <-chan *bytes.Buffer
+
+	// Эта настройка должна предотварить переключение трафика во время кратковременных сетевых неполадок.
+	// Переключение трафика произойдёт посdcdле того, как мастер будет недоступен больше заданного, этой настройкой, времени.
+	// Так же, возврат трафика на более приоритетный сервер, произойдёт не раньше, чем время соединение с сервером превысит время заданное этой настрйокой
+	SwitchLatency int64
 
 	BackendsList             []string
 	BackendReconnectInterval int64
 	BackendTimeout           int64
-	BackendRetries           int
 }
 
 func (u *Upstream) Start() {
 	log = u.Log
 	u.backends = make([]*backend, len(u.BackendsList))
-	for i, server := range u.BackendsList {
+	for i := len(u.BackendsList) - 1; i > -1; i-- {
 		newBackend := &backend{
-			server:  server,
-			inteval: time.Millisecond * time.Duration(u.BackendReconnectInterval),
-			timeout: time.Millisecond * time.Duration(u.BackendTimeout),
-			retries: u.BackendRetries,
+			server:   u.BackendsList[i],
+			timeout:  time.Millisecond * time.Duration(u.BackendTimeout),
+			downtime: time.Now().Unix(),
+			uptime:   time.Now().Unix(),
 		}
 		u.backends[i] = newBackend
 
 		if err := newBackend.Connect(); err != nil {
-			log.Errorf("Connect to %s fail with error: %v", server, err)
+			log.Errorf("Connect to %s fail with error: %v", u.BackendsList[i], err)
 		} else {
-			log.Infof("Connect to %s successfully", server)
+			log.Infof("Connect to %s successfully", u.BackendsList[i])
+			u.activeBackend = u.backends[i]
 		}
 	}
-	go u.sheduller()
+	if u.activeBackend == nil {
+		log.Error("No avaliable active backends")
+	} else {
+		log.Infof("Active backend is %s", u.activeBackend.server)
+	}
+	go u.watchDog()
+	go u.sendData()
 }
 
-func (u *Upstream) Stop() {
+func (u *Upstream) Stop() error {
 	for _, b := range u.backends {
 		b.Stop()
 	}
+	return nil
 }
 
-func (u *Upstream) sheduller() {
-	for data := range u.Channel {
-		for _, b := range u.backends {
-			err := b.SendData(data.Bytes())
-			if err == nil {
-				break
+func (u *Upstream) sendData() {
+	for buf := range u.Channel {
+		for {
+			if u.activeBackend.conn != nil {
+				_, err := u.activeBackend.conn.Write(buf.Bytes())
+				if err == nil {
+					break
+				}
+				log.Infof("%s is disconnected", u.activeBackend.server)
+				u.activeBackend.conn = nil
+				u.activeBackend.downtime = time.Now().Unix()
 			}
-			log.Errorf("Switch to next backend [%v]", err)
+			time.Sleep(time.Duration(u.SwitchLatency) * time.Second)
+		}
+	}
+}
+
+func (u *Upstream) watchDog() {
+	for {
+		time.Sleep(time.Duration(u.BackendReconnectInterval)*time.Second)
+		priority := len(u.backends)
+		for i, backend := range u.backends {
+			if err := backend.Connect(); err == nil {
+				log.Debugf("%s OK", backend.server)
+				if i < priority {
+					priority = i
+				}
+			} else {
+				log.Debugf("%s Fail with error: %v", backend.server, err)
+			}
+		}
+		if priority == len(u.backends) {
+			log.Errorf("All backends down")
+			continue
+		}
+		if u.activeBackend == nil {
+			u.activeBackend = u.backends[priority]
+			log.Infof("Now active backend is %s", u.activeBackend.server)
+			continue
+		}
+		if u.activeBackend.server != u.backends[priority].server {
+			log.Infof("Switch backend from %s to %s", u.activeBackend.server, u.backends[priority].server)
+			u.activeBackend = u.backends[priority]
 		}
 	}
 }
@@ -77,36 +123,20 @@ func (b *backend) Connect() error {
 		addr *net.TCPAddr
 		err  error
 	)
-	if addr, err = net.ResolveTCPAddr("tcp", b.server); err != nil {
-		return err
-	}
-	if b.conn, err = net.DialTimeout("tcp", addr.String(), b.timeout); err != nil {
-		return err
+	if b.conn == nil {
+		if addr, err = net.ResolveTCPAddr("tcp", b.server); err != nil {
+			return err
+		}
+		if b.conn, err = net.DialTimeout("tcp", addr.String(), b.timeout); err != nil {
+			return err
+		}
+		b.uptime = time.Now().Unix()
 	}
 	return nil
 }
 
-
-func (b *backend) SendData(data []byte) error {
-	if b.conn != nil {
-		if _, err := b.conn.Write(data); err == nil {
-			// log.Debugf("Sent %d bytes to %s", n, b.server)
-			return nil
-		}
-	}
-	for i := 1; i < b.retries; i++ {
-		time.Sleep(b.inteval)
-		if err := b.Connect(); err == nil {
-			if _, err := b.conn.Write(data); err == nil {
-				// log.Debugf("Sent %d bytes to %s", n, b.server)
-				return nil
-			}
-		}
-		// log.Debug("Failed reconnect to %s after %d tryes", b.server, i)
-	}
-	return fmt.Errorf("Can't send data to %s after %d retries", b.server, b.retries)
-}
-
 func (b *backend) Stop() {
-	b.conn.Close()
+	if b.conn != nil {
+		b.conn.Close()
+	}
 }
