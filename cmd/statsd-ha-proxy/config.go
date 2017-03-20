@@ -35,10 +35,11 @@ func getDefaultConfig() config {
 			"statsite1:8125",
 			"statsite2:8125",
 		},
+		// Time in milliseconds
 		Timeout:           1000,
 		ReconnectInterval: 10000,
 		CacheSize:         1000000,
-		SwitchLatency:     10, //seconds
+		SwitchLatency:     10000,
 	}
 }
 

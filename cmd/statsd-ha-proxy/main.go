@@ -5,17 +5,20 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-
 	"bytes"
 
 	"github.com/AlexAkulov/statsd-ha-proxy/server"
 	"github.com/AlexAkulov/statsd-ha-proxy/upstreams"
 	"github.com/op/go-logging"
 	"github.com/spf13/pflag"
+	"time"
 )
 
 var (
 	version = "unknown"
+	goVersion = "unknown"
+	buildDate = "unknown"
+
 	log     *logging.Logger
 )
 
@@ -33,7 +36,9 @@ func main() {
 	}
 
 	if *versionFlag {
-		fmt.Printf("version: %s\n", version)
+		fmt.Println("version: ", version)
+		fmt.Println("Goland version: ", goVersion)
+		fmt.Println("Build Date: ", buildDate)
 		os.Exit(0)
 	}
 
@@ -61,9 +66,9 @@ func main() {
 		Log:                      log,
 		Channel:                  cache,
 		BackendsList:             config.Backends,
-		BackendReconnectInterval: config.ReconnectInterval,
-		BackendTimeout:           config.Timeout,
-		SwitchLatency:            config.SwitchLatency,
+		BackendReconnectInterval: time.Millisecond * time.Duration(config.ReconnectInterval),
+		BackendTimeout:           time.Millisecond * time.Duration(config.Timeout),
+		SwitchLatency:            time.Millisecond * time.Duration(config.SwitchLatency),
 	}
 
 	statsiteBackends.Start()
@@ -76,7 +81,8 @@ func main() {
 	}
 
 	if err := statsiteProxyServer.Start(); err != nil {
-		log.Critical(err)
+		statsiteBackends.Stop();
+		log.Fatal(err)
 	}
 
 	signalChannel := make(chan os.Signal)

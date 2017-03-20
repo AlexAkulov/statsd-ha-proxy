@@ -27,13 +27,13 @@ type Upstream struct {
 	Channel       <-chan *bytes.Buffer
 
 	// Эта настройка должна предотварить переключение трафика во время кратковременных сетевых неполадок.
-	// Переключение трафика произойдёт посdcdле того, как мастер будет недоступен больше заданного, этой настройкой, времени.
+	// Переключение трафика произойдёт после того, как мастер будет недоступен больше заданного, этой настройкой, времени.
 	// Так же, возврат трафика на более приоритетный сервер, произойдёт не раньше, чем время соединение с сервером превысит время заданное этой настрйокой
-	SwitchLatency int64
+	SwitchLatency time.Duration
 
 	BackendsList             []string
-	BackendReconnectInterval int64
-	BackendTimeout           int64
+	BackendReconnectInterval time.Duration
+	BackendTimeout           time.Duration
 }
 
 func (u *Upstream) Start() {
@@ -42,7 +42,7 @@ func (u *Upstream) Start() {
 	for i := len(u.BackendsList) - 1; i > -1; i-- {
 		newBackend := &backend{
 			server:   u.BackendsList[i],
-			timeout:  time.Millisecond * time.Duration(u.BackendTimeout),
+			timeout:  u.BackendTimeout,
 			downtime: time.Now().Unix(),
 			uptime:   time.Now().Unix(),
 		}
@@ -83,14 +83,14 @@ func (u *Upstream) sendData() {
 				u.activeBackend.conn = nil
 				u.activeBackend.downtime = time.Now().Unix()
 			}
-			time.Sleep(time.Duration(u.SwitchLatency) * time.Second)
+			time.Sleep(u.SwitchLatency)
 		}
 	}
 }
 
 func (u *Upstream) watchDog() {
 	for {
-		time.Sleep(time.Duration(u.BackendReconnectInterval)*time.Second)
+		time.Sleep(u.BackendReconnectInterval)
 		priority := len(u.backends)
 		for i, backend := range u.backends {
 			if err := backend.Connect(); err == nil {
