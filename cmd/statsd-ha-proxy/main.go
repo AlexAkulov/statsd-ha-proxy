@@ -1,25 +1,27 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
-	"bytes"
+
+	"time"
 
 	"github.com/AlexAkulov/statsd-ha-proxy/server"
 	"github.com/AlexAkulov/statsd-ha-proxy/upstreams"
+	"github.com/go-kit/kit/metrics/graphite"
 	"github.com/op/go-logging"
 	"github.com/spf13/pflag"
-	"time"
 )
 
 var (
-	version = "unknown"
+	version   = "unknown"
 	goVersion = "unknown"
 	buildDate = "unknown"
 
-	log     *logging.Logger
+	log *logging.Logger
 )
 
 func main() {
@@ -59,11 +61,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Selfstate metrics
+	hostname, _ := os.Hostname()
+	selfState := graphite.New(fmt.Sprintf("%s.statsite_proxy.%s.", config.Stats.GraphitePrefix, hostname), nil)
+	if config.Stats.Enabled {
+		selfStateTicker := time.NewTicker(60 * time.Second)
+		go selfState.SendLoop(selfStateTicker.C, "tcp", config.Stats.GraphiteURI)
+	}
+
 	var cache = make(chan *bytes.Buffer, config.CacheSize)
 
 	// Start Backends
 	statsiteBackends := upstreams.Upstream{
 		Log:                      log,
+		Stats:                    selfState,
 		Channel:                  cache,
 		BackendsList:             config.Backends,
 		BackendReconnectInterval: time.Millisecond * time.Duration(config.ReconnectInterval),
@@ -81,7 +92,7 @@ func main() {
 	}
 
 	if err := statsiteProxyServer.Start(); err != nil {
-		statsiteBackends.Stop();
+		statsiteBackends.Stop()
 		log.Fatal(err)
 	}
 

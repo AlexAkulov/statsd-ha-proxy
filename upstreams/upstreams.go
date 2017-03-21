@@ -5,7 +5,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/go-kit/kit/metrics/graphite"
 	"github.com/op/go-logging"
+	"fmt"
 )
 
 var (
@@ -13,6 +15,9 @@ var (
 )
 
 type backend struct {
+	statsActive *graphite.Counter
+	statsSentBytes *graphite.Counter
+
 	conn     net.Conn
 	server   string
 	timeout  time.Duration
@@ -24,6 +29,7 @@ type Upstream struct {
 	backends      []*backend
 	activeBackend *backend
 	Log           *logging.Logger
+	Stats         *graphite.Graphite
 	Channel       <-chan *bytes.Buffer
 
 	// Эта настройка должна предотварить переключение трафика во время кратковременных сетевых неполадок.
@@ -41,6 +47,7 @@ func (u *Upstream) Start() {
 	u.backends = make([]*backend, len(u.BackendsList))
 	for i := len(u.BackendsList) - 1; i > -1; i-- {
 		newBackend := &backend{
+			statsSentBytes: u.Stats.NewCounter(fmt.Sprintf("upstrems.%s.sendBytes", u.BackendsList[i])),
 			server:   u.BackendsList[i],
 			timeout:  u.BackendTimeout,
 			downtime: time.Now().Unix(),
@@ -75,8 +82,9 @@ func (u *Upstream) sendData() {
 	for buf := range u.Channel {
 		for {
 			if u.activeBackend.conn != nil {
-				_, err := u.activeBackend.conn.Write(buf.Bytes())
+				n, err := u.activeBackend.conn.Write(buf.Bytes())
 				if err == nil {
+					u.activeBackend.statsSentBytes.Add(float64(n))
 					break
 				}
 				log.Infof("%s is disconnected", u.activeBackend.server)

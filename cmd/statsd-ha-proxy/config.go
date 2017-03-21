@@ -9,6 +9,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type stats struct {
+	Enabled        bool   `yaml:"enabled"`
+	GraphiteURI    string `yaml:"graphite_uri"`
+	GraphitePrefix string `yaml:"graphite_prefix"`
+}
+
 type config struct {
 	LogFile           string   `yaml:"log_file"`
 	LogLevel          string   `yaml:"log_level"`
@@ -18,6 +24,7 @@ type config struct {
 	ReconnectInterval int64    `yaml:"reconnect_interval"`
 	CacheSize         int64    `yaml:"cache_size"`
 	SwitchLatency     int64    `yaml:"switch_upstream_latency"`
+	Stats             *stats    `yaml:"stats"`
 }
 
 func printDefaultConfig() {
@@ -40,6 +47,11 @@ func getDefaultConfig() config {
 		ReconnectInterval: 10000,
 		CacheSize:         1000000,
 		SwitchLatency:     10000,
+		Stats: &stats{
+			Enabled: false,
+			GraphiteURI: "localhost:2003",
+			GraphitePrefix: "DevOps",
+		},
 	}
 }
 
