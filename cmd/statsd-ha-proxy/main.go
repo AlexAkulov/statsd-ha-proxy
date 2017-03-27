@@ -9,9 +9,12 @@ import (
 
 	"time"
 
+	"io"
+
 	"github.com/AlexAkulov/statsd-ha-proxy/server"
 	"github.com/AlexAkulov/statsd-ha-proxy/upstreams"
 	"github.com/go-kit/kit/metrics/graphite"
+	"github.com/go-kit/kit/util/conn"
 	"github.com/op/go-logging"
 	"github.com/spf13/pflag"
 )
@@ -61,15 +64,33 @@ func main() {
 		os.Exit(1)
 	}
 
+	var cache = make(chan *bytes.Buffer, config.CacheSize)
+
 	// Selfstate metrics
 	hostname, _ := os.Hostname()
+	var selfStateTicker *time.Ticker
+
 	selfState := graphite.New(fmt.Sprintf("%s.statsite_proxy.%s.", config.Stats.GraphitePrefix, hostname), nil)
 	if config.Stats.Enabled {
-		selfStateTicker := time.NewTicker(60 * time.Second)
-		go selfState.SendLoop(selfStateTicker.C, "tcp", config.Stats.GraphiteURI)
-	}
+		selfStateTicker = time.NewTicker(60 * time.Second)
+		defaultStatsConn := conn.NewDefaultManager("tcp", config.Stats.GraphiteURI, nil)
 
-	var cache = make(chan *bytes.Buffer, config.CacheSize)
+		cacheMaxSize := selfState.NewGauge("cache.max_size")
+		cacheUsed := selfState.NewGauge("cache.used")
+
+		go func(c <-chan time.Time, w io.Writer) {
+			for range c {
+				cacheMaxSize.Set(float64(config.CacheSize))
+				cacheUsed.Set(float64(len(cache)))
+
+				if _, err := selfState.WriteTo(w); err != nil {
+					log.Error("during", "WriteTo", "err", err)
+				}
+				// Reset Counters
+				// ...
+			}
+		}(selfStateTicker.C, defaultStatsConn)
+	}
 
 	// Start Backends
 	statsiteBackends := upstreams.Upstream{
@@ -86,6 +107,7 @@ func main() {
 
 	statsiteProxyServer := server.Server{
 		Log:           log,
+		Stats:         selfState,
 		Channel:       cache,
 		ConfigListen:  config.Listen,
 		ConfigServers: config.Backends,
@@ -106,6 +128,10 @@ func main() {
 
 	if err := statsiteBackends.Stop(); err != nil {
 		log.Error(err)
+	}
+
+	if selfStateTicker != nil {
+		selfStateTicker.Stop()
 	}
 
 }

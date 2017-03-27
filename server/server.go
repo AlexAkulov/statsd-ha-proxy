@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-kit/kit/metrics/graphite"
 	"github.com/op/go-logging"
-	"gopkg.in/tomb.v2"
 )
 
 var (
@@ -22,11 +22,13 @@ type Server struct {
 	ConfigServers []string
 	ReadTimeout   time.Duration
 
-	Log         *logging.Logger
-	udpConn     *net.UDPConn
-	tcpListener *net.TCPListener
-	Channel     chan<- *bytes.Buffer
-	tomb        tomb.Tomb
+	Log           *logging.Logger
+	udpConn       *net.UDPConn
+	tcpListener   *net.TCPListener
+	Channel       chan<- *bytes.Buffer
+	Stats         *graphite.Graphite
+	statsTCPBytes *graphite.Counter
+	statsUDPBytes *graphite.Counter
 }
 
 // Start server
@@ -38,6 +40,9 @@ func (s *Server) Start() error {
 	if err := s.startTCP(); err != nil {
 		return err
 	}
+
+	s.statsTCPBytes = s.Stats.NewCounter("incoming.tcpBytes")
+	s.statsUDPBytes = s.Stats.NewCounter("incoming.udpBytes")
 
 	return nil
 }
@@ -59,17 +64,13 @@ func (s *Server) startUDP() error {
 	go func() error {
 		defer s.udpConn.Close()
 		for {
-			select {
-			case <-s.tomb.Dying():
-				return nil
-			default:
-				n, _, err := s.udpConn.ReadFromUDP(buf)
-				if err != nil {
-					log.Errorf("Server Error: %v", err)
-				}
-				if n > 0 {
-					s.Channel <- bytes.NewBuffer(buf[:n])
-				}
+			n, _, err := s.udpConn.ReadFromUDP(buf)
+			if err != nil {
+				log.Errorf("Server Error: %v", err)
+			}
+			if n > 0 {
+				s.statsUDPBytes.Add(float64(n))
+				s.Channel <- bytes.NewBuffer(buf[:n])
 			}
 		}
 	}()
@@ -91,17 +92,12 @@ func (s *Server) startTCP() error {
 	go func() error {
 		defer s.tcpListener.Close()
 		for {
-			select {
-			case <-s.tomb.Dying():
-				return nil
-			default:
-				conn, err := s.tcpListener.AcceptTCP()
-				if err != nil {
-					log.Error(err)
-					continue
-				}
-				go s.handleTCP(conn)
+			conn, err := s.tcpListener.AcceptTCP()
+			if err != nil {
+				log.Error(err)
+				continue
 			}
+			go s.handleTCP(conn)
 		}
 	}()
 	return nil
@@ -121,6 +117,7 @@ func (s *Server) handleTCP(conn *net.TCPConn) error {
 			return err
 		}
 		if n > 0 {
+			s.statsTCPBytes.Add(float64(n))
 			s.Channel <- bytes.NewBuffer(buf[:n])
 		}
 	}
@@ -134,7 +131,6 @@ func (s *Server) Reload() error {
 
 // Stop server
 func (s *Server) Stop() error {
-	// tomb.Stop()
 	return nil
 }
 

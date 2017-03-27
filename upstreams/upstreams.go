@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"net"
 	"time"
+	"fmt"
 
 	"github.com/go-kit/kit/metrics/graphite"
 	"github.com/op/go-logging"
-	"fmt"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 )
 
 type backend struct {
-	statsActive *graphite.Counter
+	statsActive    *graphite.Counter
 	statsSentBytes *graphite.Counter
 
 	conn     net.Conn
@@ -48,10 +48,10 @@ func (u *Upstream) Start() {
 	for i := len(u.BackendsList) - 1; i > -1; i-- {
 		newBackend := &backend{
 			statsSentBytes: u.Stats.NewCounter(fmt.Sprintf("upstrems.%s.sendBytes", u.BackendsList[i])),
-			server:   u.BackendsList[i],
-			timeout:  u.BackendTimeout,
-			downtime: time.Now().Unix(),
-			uptime:   time.Now().Unix(),
+			server:         u.BackendsList[i],
+			timeout:        u.BackendTimeout,
+			downtime:       time.Now().Unix(),
+			uptime:         time.Now().Unix(),
 		}
 		u.backends[i] = newBackend
 
