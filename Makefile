@@ -24,7 +24,7 @@ tar: build
 
 	tar -czvPf build/${NAME}-${VERSION}-${RELEASE}.tar.gz -C build/root .
 
-rpm: tar
+rpm:
 	fpm -t rpm \
 		-s "tar" \
 		--description "statsd-ha-proxy" \
