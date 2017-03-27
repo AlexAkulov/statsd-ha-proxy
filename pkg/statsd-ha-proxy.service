@@ -1,11 +1,11 @@
 [Unit]
-Description=statsd High Available Proxy
+Description=StatsD High Available Proxy
 After=network-online.target
 
 [Service]
 User=statsite
 Group=statsite
-ExecStart=/usr/bin/statsd-ha-proxy -config=/etc/statsd-ha-proxy/config.yml
+ExecStart=/usr/bin/statsd-ha-proxy --config=/etc/statsd-ha-proxy/config.yml
 TimeoutStopSec=60
 StandardOutput=journal
 StandardError=journal

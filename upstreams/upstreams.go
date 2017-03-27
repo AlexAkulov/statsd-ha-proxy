@@ -64,6 +64,7 @@ func (u *Upstream) Start() {
 	}
 	if u.activeBackend == nil {
 		log.Error("No avaliable active backends")
+		u.activeBackend = u.backends[0]
 	} else {
 		log.Infof("Active backend is %s", u.activeBackend.server)
 	}
