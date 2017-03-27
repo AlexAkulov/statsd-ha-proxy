@@ -85,6 +85,7 @@ func newLog(logFile, level string) (*logging.Logger, error) {
 		}
 		logBackend = logging.NewLogBackend(logFile, "", 0)
 	}
+	logging.SetFormatter(logging.MustStringFormatter("%{time:2006-01-02 15:04:05}\t%{level}\t%{message}"))
 	logger := logging.MustGetLogger("module")
 	leveledLogBackend := logging.AddModuleLevel(logBackend)
 	leveledLogBackend.SetLevel(logLevel, "module")
