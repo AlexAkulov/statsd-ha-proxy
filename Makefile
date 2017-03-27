@@ -36,7 +36,7 @@ rpm: tar
 		--iteration "${RELEASE}" \
 		--after-install "./pkg/postinst.sh" \
 		--depends logrotate \
-		--config-files "/etc/statsd-ha-proxy/config.yml"
+		--config-files "/etc/statsd-ha-proxy/config.yml" \
 		-p build \
 		build/${NAME}-${VERSION}-${RELEASE}.tar.gz
 
