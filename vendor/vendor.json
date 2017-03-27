@@ -1,0 +1,85 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "dE1TAdRkHqFphHxTyhU8QqZwlYM=",
+			"path": "github.com/VividCortex/gohistogram",
+			"revision": "51564d9861991fb0ad0f531c99ef602d0f9866e6",
+			"revisionTime": "2016-08-22T18:46:21Z"
+		},
+		{
+			"checksumSHA1": "ZSRtnAM/vH1sl0jxr4HztYI/4vs=",
+			"path": "github.com/go-kit/kit/log",
+			"revision": "04dd4f741c6e76cc170a4d7913f4c625952e6f58",
+			"revisionTime": "2017-03-20T09:05:36Z"
+		},
+		{
+			"checksumSHA1": "rt/goV5G9VZ+R7feZq/vVXPpWu0=",
+			"path": "github.com/go-kit/kit/metrics",
+			"revision": "04dd4f741c6e76cc170a4d7913f4c625952e6f58",
+			"revisionTime": "2017-03-20T09:05:36Z"
+		},
+		{
+			"checksumSHA1": "9eLi8Ek42OhRwQJAnpduF/tV2uk=",
+			"path": "github.com/go-kit/kit/metrics/generic",
+			"revision": "04dd4f741c6e76cc170a4d7913f4c625952e6f58",
+			"revisionTime": "2017-03-20T09:05:36Z"
+		},
+		{
+			"checksumSHA1": "jDNZYItEtvtqnprj0reFXRSkaP4=",
+			"path": "github.com/go-kit/kit/metrics/graphite",
+			"revision": "04dd4f741c6e76cc170a4d7913f4c625952e6f58",
+			"revisionTime": "2017-03-20T09:05:36Z"
+		},
+		{
+			"checksumSHA1": "nqjHqtG6eWaipohdW/nM5h51JVE=",
+			"path": "github.com/go-kit/kit/metrics/internal/lv",
+			"revision": "04dd4f741c6e76cc170a4d7913f4c625952e6f58",
+			"revisionTime": "2017-03-20T09:05:36Z"
+		},
+		{
+			"checksumSHA1": "FIx/LfpCx7fKlsoTrip1V9J+qKs=",
+			"path": "github.com/go-kit/kit/util/conn",
+			"revision": "04dd4f741c6e76cc170a4d7913f4c625952e6f58",
+			"revisionTime": "2017-03-20T09:05:36Z"
+		},
+		{
+			"checksumSHA1": "KxX/Drph+byPXBFIXaCZaCOAnrU=",
+			"path": "github.com/go-logfmt/logfmt",
+			"revision": "390ab7935ee28ec6b286364bba9b4dd6410cb3d5",
+			"revisionTime": "2016-11-15T14:25:13Z"
+		},
+		{
+			"checksumSHA1": "2sj/DbXoXdnPAfjAEyhS0Jj5QL0=",
+			"path": "github.com/go-stack/stack",
+			"revision": "100eb0c0a9c5b306ca2fb4f165df21d80ada4b82",
+			"revisionTime": "2016-05-14T03:44:11Z"
+		},
+		{
+			"checksumSHA1": "abKzFXAn0KDr5U+JON1ZgJ2lUtU=",
+			"path": "github.com/kr/logfmt",
+			"revision": "b84e30acd515aadc4b783ad4ff83aff3299bdfe0",
+			"revisionTime": "2014-02-26T03:06:59Z"
+		},
+		{
+			"checksumSHA1": "BoXdUBWB8UnSlFlbnuTQaPqfCGk=",
+			"path": "github.com/op/go-logging",
+			"revision": "970db520ece77730c7e4724c61121037378659d9",
+			"revisionTime": "2016-03-15T20:05:05Z"
+		},
+		{
+			"checksumSHA1": "5KvHyB1CImtwZT3fwNkNUlc8R0k=",
+			"path": "github.com/spf13/pflag",
+			"revision": "9ff6c6923cfffbcd502984b8e0c80539a94968b7",
+			"revisionTime": "2017-01-30T21:42:45Z"
+		},
+		{
+			"checksumSHA1": "0KwOlQV1dNUh9X8t+5s7nX5bqfk=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "a3f3340b5840cee44f372bddb5880fcbc419b46a",
+			"revisionTime": "2017-02-08T14:18:51Z"
+		}
+	],
+	"rootPath": "github.com/AlexAkulov/statsd-ha-proxy"
+}
