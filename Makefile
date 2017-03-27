@@ -1,3 +1,4 @@
+NAME := statsd-ha-proxy
 VERSION := $(shell git describe --always --tags --abbrev=0 | tail -c +2)
 RELEASE := $(shell git describe --always --tags | awk -F- '{ if ($$2) dot="."} END { printf "1%s%s%s%s\n",dot,$$2,dot,$$3}')
 GO_VERSION := $(shell go version | cut -d' ' -f3)
@@ -11,19 +12,33 @@ test:
 
 build: clean
 	mkdir -p build/root/usr/bin/
-	go build  ${LDFLAGS} -o build/root/usr/bin/statsd-ha-proxy ./cmd/statsd-ha-proxy
+	go build  ${LDFLAGS} -o build/root/usr/bin/${NAME} ./cmd/${NAME}
 
-rpm: build
+tar: build
+	mkdir -p build/root/etc/${NAME}
+	./build/root/usr/bin/${NAME} --print-default-config > build/root/etc/${NAME}/config.yml
+	mkdir -p build/root/usr/lib/systemd/system
+	cp pkg/${NAME}.service build/root/usr/lib/systemd/system/${NAME}.service
+	mkdir -p build/root/etc/logrotate.d
+	cp pkg/logrotate build/root/etc/logrotate.d/${NAME}
+
+	tar -czvPf build/${NAME}-${VERSION}-${RELEASE}.tar.gz -C build/root .
+
+rpm: tar
 	fpm -t rpm \
-		-s "dir" \
+		-s "tar" \
 		--description "statsd-ha-proxy" \
-		-C ./build/root/ \
 		--vendor "Alex Akulov" \
 		--url "https://github.com/AlexAkulov/statsd-ha-proxy" \
-		--name "statsd-ha-proxy" \
+		--license "GPLv3" \
+		--name "${NAME}" \
 		--version "${VERSION}" \
 		--iteration "${RELEASE}" \
-		-p build
+		--after-install "./pkg/postinst.sh" \
+		--depends logrotate \
+		--config-files "/etc/statsd-ha-proxy/config.yml"
+		-p build \
+		build/${NAME}-${VERSION}-${RELEASE}.tar.gz
 
 clean:
 	rm -rf build
