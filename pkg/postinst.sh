@@ -10,8 +10,7 @@ set -e
     groupadd -r "statsite"
   fi
   if ! getent passwd "statsite" > /dev/null 2>&1 ; then
-    useradd -r -g elk -d /usr/share/elk -s /sbin/nologin \
-      -c "statsite user" elk
+    useradd -r -g statsite -s /sbin/nologin statsite
   fi
 
   mkdir -p /etc/statsd-ha-proxy
