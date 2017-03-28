@@ -83,6 +83,9 @@ func (u *Upstream) sendData() {
 	for buf := range u.Channel {
 		for {
 			if u.activeBackend.conn != nil {
+				// FIXME
+				buf.WriteString("\n")
+				// ...
 				n, err := u.activeBackend.conn.Write(buf.Bytes())
 				if err == nil {
 					u.activeBackend.statsSentBytes.Add(float64(n))
@@ -141,7 +144,7 @@ func (b *backend) Connect() error {
 		}
 		b.conn.SetNoDelay(false)
 		b.conn.SetKeepAlive(true)
-		
+
 		b.uptime = time.Now().Unix()
 	}
 	return nil

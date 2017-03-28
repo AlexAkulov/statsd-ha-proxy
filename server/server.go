@@ -1,15 +1,13 @@
 package server
 
 import (
-	"bytes"
-	"io"
-	"io/ioutil"
-	"net"
-	"strconv"
-	"time"
-
 	"bufio"
+	"bytes"
+	"fmt"
+	"io"
+	"net"
 	"net/textproto"
+	"time"
 
 	"github.com/go-kit/kit/metrics/graphite"
 	"github.com/op/go-logging"
@@ -25,18 +23,21 @@ type Server struct {
 	ConfigServers []string
 	ReadTimeout   time.Duration
 
-	Log           *logging.Logger
-	udpConn       *net.UDPConn
-	tcpListener   *net.TCPListener
-	Channel       chan<- *bytes.Buffer
-	Stats         *graphite.Graphite
-	statsTCPBytes *graphite.Counter
-	statsUDPBytes *graphite.Counter
+	Log             *logging.Logger
+	udpConn         *net.UDPConn
+	tcpListener     *net.TCPListener
+	Channel         chan<- *bytes.Buffer
+	Stats           *graphite.Graphite
+	statsTCPBytes   *graphite.Counter
+	statsUDPBytes   *graphite.Counter
+	statsTCPCounter *graphite.Counter
+	statsUDPCounter *graphite.Counter
 }
 
 // Start server
 func (s *Server) Start() error {
 	log = s.Log
+
 	if err := s.startUDP(); err != nil {
 		return err
 	}
@@ -46,6 +47,8 @@ func (s *Server) Start() error {
 
 	s.statsTCPBytes = s.Stats.NewCounter("incoming.tcpBytes")
 	s.statsUDPBytes = s.Stats.NewCounter("incoming.udpBytes")
+	s.statsTCPCounter = s.Stats.NewCounter("incoming.tcpCounter")
+	s.statsUDPCounter = s.Stats.NewCounter("incoming.udpCounter")
 
 	return nil
 }
@@ -76,8 +79,16 @@ func (s *Server) startUDP() error {
 				log.Errorf("Server Error: %v", err)
 			}
 			if n > 0 {
-				s.statsUDPBytes.Add(float64(n))
-				s.Channel <- bytes.NewBuffer(line)
+				go func() {
+					buf, err := s.validate(line)
+					if err != nil {
+						log.Warning(err)
+						return
+					}
+					s.Channel <- buf
+					s.statsUDPBytes.Add(float64(n))
+					s.statsUDPCounter.Add(1)
+				}()
 			}
 		}
 	}()
@@ -126,8 +137,16 @@ func (s *Server) handleTCP(conn *net.TCPConn) error {
 			return err
 		}
 		if n > 0 {
-			s.statsTCPBytes.Add(float64(n))
-			s.Channel <- bytes.NewBuffer(line)
+			go func() {
+				buf, err := s.validate(line)
+				if err != nil {
+					log.Warning(err)
+					return
+				}
+				s.Channel <- buf
+				s.statsTCPBytes.Add(float64(n))
+				s.statsTCPCounter.Add(1)
+			}()
 		}
 	}
 }
@@ -143,21 +162,23 @@ func (s *Server) Stop() error {
 	return nil
 }
 
-// sockBufferMaxSize() returns the maximum size that the UDP receive buffer
-// in the kernel can be set to.  In bytes.
-func getSockBufferMaxSize() int {
-	defaultBufferSize := 32 * 1024
-	// XXX: This is Linux-only most likely
-	data, err := ioutil.ReadFile("/proc/sys/net/core/rmem_max")
-	if err != nil {
-		return defaultBufferSize
+func (s *Server) validate(line []byte) (*bytes.Buffer, error) {
+	// Fast validate statsd metrics from heka
+	colonPos := bytes.IndexByte(line, ':')
+	if colonPos == -1 {
+		return nil, fmt.Errorf("Failed to parse line: %s", string(line))
 	}
-
-	data = bytes.TrimRight(data, "\n\r")
-	i, err := strconv.Atoi(string(data))
-	if err != nil {
-		return defaultBufferSize
+	pipePos := bytes.IndexByte(line, '|')
+	if pipePos == -1 {
+		return nil, fmt.Errorf("Failed to parse line: %s", string(line))
 	}
+	// bucket := line[:colonPos]
+	// value := line[colonPos+1 : pipePos]
 
-	return i
+	modifier := line[pipePos+1:]
+	lm := len(modifier)
+	if lm != 1 && lm != 2 {
+		return nil, fmt.Errorf("Failed to parse line: %s", string(line))
+	}
+	return bytes.NewBuffer(line), nil
 }
