@@ -91,7 +91,7 @@ func (u *Upstream) sendData() {
 					u.activeBackend.statsSentBytes.Add(float64(n))
 					break
 				}
-				log.Infof("%s is disconnected", u.activeBackend.server)
+				log.Infof("%s is disconnected with error: %v", u.activeBackend.server, err)
 				u.activeBackend.conn = nil
 				u.activeBackend.downtime = time.Now().Unix()
 			}
