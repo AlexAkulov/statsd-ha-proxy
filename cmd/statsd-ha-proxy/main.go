@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"strings"
 
 	"github.com/AlexAkulov/statsd-ha-proxy/server"
 	"github.com/AlexAkulov/statsd-ha-proxy/upstreams"
@@ -15,7 +16,6 @@ import (
 	"github.com/go-kit/kit/util/conn"
 	"github.com/op/go-logging"
 	"github.com/spf13/pflag"
-	"strings"
 )
 
 var (
@@ -70,7 +70,7 @@ func main() {
 	if err != nil {
 		hostname = "unknown"
 	} else {
-		hostname = strings.Split(hostname,".")[0]
+		hostname = strings.Split(hostname, ".")[0]
 	}
 
 	var selfStateTicker *time.Ticker
