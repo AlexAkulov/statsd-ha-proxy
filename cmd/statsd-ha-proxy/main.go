@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/kit/util/conn"
 	"github.com/op/go-logging"
 	"github.com/spf13/pflag"
+	"strings"
 )
 
 var (
@@ -65,7 +66,13 @@ func main() {
 	var cache = make(chan *bytes.Buffer, config.CacheSize)
 
 	// Selfstate metrics
-	hostname, _ := os.Hostname()
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	} else {
+		hostname = strings.Split(hostname,".")[0]
+	}
+
 	var selfStateTicker *time.Ticker
 
 	selfState := graphite.New(fmt.Sprintf("%s.statsite_proxy.%s.", config.Stats.GraphitePrefix, hostname), nil)
