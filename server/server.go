@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"bufio"
+	"net/textproto"
+
 	"github.com/go-kit/kit/metrics/graphite"
 	"github.com/op/go-logging"
 )
@@ -59,18 +62,22 @@ func (s *Server) startUDP() error {
 		return err
 	}
 
-	buf := make([]byte, getSockBufferMaxSize())
+	// buf := make([]byte, getSockBufferMaxSize())
+	reader := bufio.NewReader(s.udpConn)
+	tp := textproto.NewReader(reader)
 
 	go func() error {
 		defer s.udpConn.Close()
 		for {
-			n, _, err := s.udpConn.ReadFromUDP(buf)
+			line, err := tp.ReadLineBytes()
+			n := len(line)
+			// n, _, err := s.udpConn.ReadFromUDP(buf)
 			if err != nil {
 				log.Errorf("Server Error: %v", err)
 			}
 			if n > 0 {
 				s.statsUDPBytes.Add(float64(n))
-				s.Channel <- bytes.NewBuffer(buf[:n])
+				s.Channel <- bytes.NewBuffer(line)
 			}
 		}
 	}()
@@ -105,10 +112,12 @@ func (s *Server) startTCP() error {
 
 func (s *Server) handleTCP(conn *net.TCPConn) error {
 	defer conn.Close()
-	buf := make([]byte, getSockBufferMaxSize())
 	// conn.SetDeadline(time.Now().Add(s.ReadTimeout))
+	reader := bufio.NewReader(conn)
+	tp := textproto.NewReader(reader)
 	for {
-		n, err := conn.Read(buf)
+		line, err := tp.ReadLineBytes()
+		n := len(line)
 		if err != nil {
 			if err == io.EOF {
 				return nil
@@ -118,7 +127,7 @@ func (s *Server) handleTCP(conn *net.TCPConn) error {
 		}
 		if n > 0 {
 			s.statsTCPBytes.Add(float64(n))
-			s.Channel <- bytes.NewBuffer(buf[:n])
+			s.Channel <- bytes.NewBuffer(line)
 		}
 	}
 }

@@ -2,9 +2,9 @@ package upstreams
 
 import (
 	"bytes"
+	"fmt"
 	"net"
 	"time"
-	"fmt"
 
 	"github.com/go-kit/kit/metrics/graphite"
 	"github.com/op/go-logging"
@@ -18,7 +18,7 @@ type backend struct {
 	statsActive    *graphite.Counter
 	statsSentBytes *graphite.Counter
 
-	conn     net.Conn
+	conn     *net.TCPConn
 	server   string
 	timeout  time.Duration
 	uptime   int64
@@ -136,9 +136,12 @@ func (b *backend) Connect() error {
 		if addr, err = net.ResolveTCPAddr("tcp", b.server); err != nil {
 			return err
 		}
-		if b.conn, err = net.DialTimeout("tcp", addr.String(), b.timeout); err != nil {
+		if b.conn, err = net.DialTCP("tcp", nil, addr); err != nil {
 			return err
 		}
+		b.conn.SetNoDelay(false)
+		b.conn.SetKeepAlive(true)
+		
 		b.uptime = time.Now().Unix()
 	}
 	return nil
