@@ -73,16 +73,18 @@ func (s *Server) startUDP() error {
 		defer s.udpConn.Close()
 		for {
 			line, err := tp.ReadLineBytes()
-			n := len(line)
 			// n, _, err := s.udpConn.ReadFromUDP(buf)
 			if err != nil {
-				log.Errorf("Server Error: %v", err)
+				log.Errorf("UDP Server Error: %v", err)
+				return err
 			}
+			n := len(line)
+			log.Debugf("UDP Received line %d bytes", n)
 			if n > 0 {
 				go func() {
 					buf, err := s.validate(line)
 					if err != nil {
-						log.Warning(err)
+						log.Warningf("UDP %v", err)
 						return
 					}
 					s.Channel <- buf
@@ -112,9 +114,10 @@ func (s *Server) startTCP() error {
 		for {
 			conn, err := s.tcpListener.AcceptTCP()
 			if err != nil {
-				log.Error(err)
+				log.Debug("TCP Fail accept with err:", err)
 				continue
 			}
+			log.Debugf("TCP Success accept from %v", conn.RemoteAddr())
 			go s.handleTCP(conn)
 		}
 	}()
@@ -131,16 +134,18 @@ func (s *Server) handleTCP(conn *net.TCPConn) error {
 		n := len(line)
 		if err != nil {
 			if err == io.EOF {
+				log.Debugf("TCP Close connection from %v", conn.RemoteAddr())
 				return nil
 			}
-			log.Error(err)
+			log.Debugf("TCP Close connection from %v with err: %v", conn.RemoteAddr(), err)
 			return err
 		}
+		log.Debugf("TCP Received %d bytes from %v", n, conn.RemoteAddr())
 		if n > 0 {
 			go func() {
 				buf, err := s.validate(line)
 				if err != nil {
-					log.Warning(err)
+					log.Warningf("TCP %v from %v", err, conn.RemoteAddr())
 					return
 				}
 				s.Channel <- buf

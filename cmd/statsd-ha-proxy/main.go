@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
-	"strings"
 
 	"github.com/AlexAkulov/statsd-ha-proxy/server"
 	"github.com/AlexAkulov/statsd-ha-proxy/upstreams"
@@ -87,9 +87,10 @@ func main() {
 			for range c {
 				cacheMaxSize.Set(float64(config.CacheSize))
 				cacheUsed.Set(float64(len(cache)))
+				log.Debugf("Cache used %d, max %d", len(cache), config.CacheSize)
 
 				if _, err := selfState.WriteTo(w); err != nil {
-					log.Error("during", "WriteTo", "err", err)
+					log.Error("Stats during", "WriteTo", "err", err)
 				}
 				// Reset Counters
 				// ...

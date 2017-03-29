@@ -24,7 +24,7 @@ type config struct {
 	ReconnectInterval int64    `yaml:"reconnect_interval"`
 	CacheSize         int64    `yaml:"cache_size"`
 	SwitchLatency     int64    `yaml:"switch_upstream_latency"`
-	Stats             *stats    `yaml:"stats"`
+	Stats             *stats   `yaml:"stats"`
 }
 
 func printDefaultConfig() {
@@ -48,8 +48,8 @@ func getDefaultConfig() config {
 		CacheSize:         1000000,
 		SwitchLatency:     10000,
 		Stats: &stats{
-			Enabled: false,
-			GraphiteURI: "localhost:2003",
+			Enabled:        false,
+			GraphiteURI:    "localhost:2003",
 			GraphitePrefix: "DevOps",
 		},
 	}
