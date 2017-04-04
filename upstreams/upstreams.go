@@ -1,7 +1,6 @@
 package upstreams
 
 import (
-	"bytes"
 	"fmt"
 	"net"
 	"time"
@@ -30,7 +29,7 @@ type Upstream struct {
 	activeBackend *backend
 	Log           *logging.Logger
 	Stats         *graphite.Graphite
-	Channel       <-chan *bytes.Buffer
+	Channel       <-chan []byte
 
 	// Эта настройка должна предотварить переключение трафика во время кратковременных сетевых неполадок.
 	// Переключение трафика произойдёт после того, как мастер будет недоступен больше заданного, этой настройкой, времени.
@@ -80,13 +79,10 @@ func (u *Upstream) Stop() error {
 }
 
 func (u *Upstream) sendData() {
-	for buf := range u.Channel {
+	for line := range u.Channel {
 		for {
 			if u.activeBackend.conn != nil {
-				// FIXME
-				buf.WriteString("\n")
-				// ...
-				n, err := u.activeBackend.conn.Write(buf.Bytes())
+				n, err := u.activeBackend.conn.Write(append(line, []byte("\n")...))
 				if err == nil {
 					u.activeBackend.statsSentBytes.Add(float64(n))
 					break

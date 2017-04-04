@@ -1,9 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
+	"net"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,7 +12,6 @@ import (
 	"github.com/AlexAkulov/statsd-ha-proxy/server"
 	"github.com/AlexAkulov/statsd-ha-proxy/upstreams"
 	"github.com/go-kit/kit/metrics/graphite"
-	"github.com/go-kit/kit/util/conn"
 	"github.com/op/go-logging"
 	"github.com/spf13/pflag"
 )
@@ -63,7 +61,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var cache = make(chan *bytes.Buffer, config.CacheSize)
+	var cache = make(chan []byte, config.CacheSize)
 
 	// Selfstate metrics
 	hostname, err := os.Hostname()
@@ -78,24 +76,31 @@ func main() {
 	selfState := graphite.New(fmt.Sprintf("%s.statsite_proxy.%s.", config.Stats.GraphitePrefix, hostname), nil)
 	if config.Stats.Enabled {
 		selfStateTicker = time.NewTicker(60 * time.Second)
-		defaultStatsConn := conn.NewDefaultManager("tcp", config.Stats.GraphiteURI, nil)
-
 		cacheMaxSize := selfState.NewGauge("cache.max_size")
 		cacheUsed := selfState.NewGauge("cache.used")
 
-		go func(c <-chan time.Time, w io.Writer) {
+		go func(c <-chan time.Time) {
 			for range c {
+				var err error
+				addr, err := net.ResolveTCPAddr("tcp", config.Stats.GraphiteURI)
+				if err != nil {
+					log.Errorf("Stats err: %v", err)
+					continue
+				}
+				conn, err := net.DialTCP("tcp", nil, addr)
+				if err != nil {
+					log.Errorf("Stats err: %v", err)
+					continue
+				}
 				cacheMaxSize.Set(float64(config.CacheSize))
 				cacheUsed.Set(float64(len(cache)))
 				log.Debugf("Cache used %d, max %d", len(cache), config.CacheSize)
-
-				if _, err := selfState.WriteTo(w); err != nil {
+				if _, err := selfState.WriteTo(conn); err != nil {
 					log.Error("Stats during", "WriteTo", "err", err)
 				}
-				// Reset Counters
-				// ...
+				conn.Close()
 			}
-		}(selfStateTicker.C, defaultStatsConn)
+		}(selfStateTicker.C)
 	}
 
 	// Start Backends
