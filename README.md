@@ -1,15 +1,9 @@
-# Statsd High Availability Proxy
+Statsd High Availability Proxy
+===
 
-```
-                   |
-         +-------------------+
-         |     :8125 UDP     |
-         |  statsd-ha-proxy  |
-         +-------------------+
-          /                 \
-         / master            \ backup
-+----------------+      +----------------+
-|   :8125 TCP    |      |   :8125 TCP    |
-|    statsite    |      |    statsite    |
-+----------------+      +----------------+
-```
+[![Build Status](https://travis-ci.org/AlexAkulov/statsd-ha-proxy.svg?branch=master)](https://travis-ci.org/AlexAkulov/statsd-ha-proxy)
+
+
+Very simple application that forward statsd traffic from different sources to one available statsd instance
+
+![img.png](img.png)
