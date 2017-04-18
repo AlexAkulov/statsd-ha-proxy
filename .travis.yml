@@ -9,8 +9,8 @@ addons:
 install:
   - gem install fpm
 script:
-  - make test
-  - make tar
+  - make test || exit 1
+  - make tar || exit 1
   - make rpm
 
 before_deploy:
