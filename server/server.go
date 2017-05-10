@@ -78,7 +78,7 @@ func (s *Server) startUDP() error {
 				return err
 			}
 			if n > 0 {
-				line := buf[:n]
+				line := bytes.Trim(buf[:n], "\r\n\t ")
 				err := s.validate(line)
 				if err != nil {
 					log.Warningf("UDP %v", err)
