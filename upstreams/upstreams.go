@@ -3,6 +3,7 @@ package upstreams
 import (
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/metrics/graphite"
@@ -46,7 +47,7 @@ func (u *Upstream) Start() {
 	u.backends = make([]*backend, len(u.BackendsList))
 	for i := len(u.BackendsList) - 1; i > -1; i-- {
 		newBackend := &backend{
-			statsSentBytes: u.Stats.NewCounter(fmt.Sprintf("upstrems.%s.sendBytes", u.BackendsList[i])),
+			statsSentBytes: u.Stats.NewCounter(fmt.Sprintf("upstrems.%s.sendBytes", strings.Replace(u.BackendsList[i], ".", "_", -1))),
 			server:         u.BackendsList[i],
 			timeout:        u.BackendTimeout,
 			downtime:       time.Now().Unix(),
