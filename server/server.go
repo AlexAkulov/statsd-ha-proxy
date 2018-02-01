@@ -78,16 +78,19 @@ func (s *Server) startUDP() error {
 				return err
 			}
 			if n > 0 {
-				line := bytes.Trim(buf[:n], "\r\n\t ")
-				err := s.validate(line)
-				if err != nil {
-					log.Warningf("UDP %v", err)
-					continue
+				lines := bytes.Split(buf[:n], []byte("\n"))
+				for _, line := range lines {
+					l := bytes.Trim(line, "\r\n\t ")
+					err := s.validate(l)
+					if err != nil {
+						log.Warningf("UDP %v", err)
+						continue
+					}
+					// log.Debugf("UDP Received line [%s] bytes", line)
+					s.Channel <- l
+					s.statsUDPBytes.Add(float64(n))
+					s.statsUDPCounter.Add(1)
 				}
-				// log.Debugf("UDP Received line [%s] bytes", line)
-				s.Channel <- line
-				s.statsUDPBytes.Add(float64(n))
-				s.statsUDPCounter.Add(1)
 			}
 		}
 	}()
