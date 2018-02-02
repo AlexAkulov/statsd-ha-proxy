@@ -81,6 +81,9 @@ func (s *Server) startUDP() error {
 				lines := bytes.Split(buf[:n], []byte("\n"))
 				for _, line := range lines {
 					l := bytes.Trim(line, "\r\n\t ")
+					if len(l) < 3 {
+						continue
+					}
 					err := s.validate(l)
 					if err != nil {
 						log.Warningf("UDP %v", err)
